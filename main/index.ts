@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron';
-import started from 'electron-squirrel-startup';
 import { setupWindows } from './wins';
+import started from 'electron-squirrel-startup';
 import logManager from './service/LogService';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -9,8 +9,8 @@ if (started) {
 }
 
 process.on('uncaughtException', (err) => {
-  logManager.error('uncaughtException', err)
-})
+  logManager.error('uncaughtException', err);
+});
 
 process.on('unhandledRejection', (reason, promise) => {
   logManager.error('unhandledRejection', reason, promise);
