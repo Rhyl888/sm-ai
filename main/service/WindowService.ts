@@ -5,6 +5,7 @@ import { BrowserWindow, BrowserWindowConstructorOptions, ipcMain, IpcMainInvokeE
 import { debounce } from '@common/utils';
 
 import path from 'node:path';
+import logManager from './LogService';
 
 interface SizeOptions {
   width: number; // 窗口宽度
@@ -74,7 +75,7 @@ class WindowService {
 
     return window;
   }
-  private _setupWinLifecycle(window: BrowserWindow, _name: WindowNames) {
+  private _setupWinLifecycle(window: BrowserWindow, name: WindowNames) {
     const updateWinStatus = debounce(() => !window?.isDestroyed()
       && window?.webContents?.send(IPC_EVENTS.MAXIMIZE_WINDOW + 'back', window?.isMaximized()), 80);
     // win.on('')
@@ -82,7 +83,7 @@ class WindowService {
       window?.destroy();
       window?.removeListener('resize', updateWinStatus);
       // this._winStates[name].instance = void 0;
-      // logManager.info(`Window closed: ${name}`);
+      logManager.info(`Window closed: ${name}`);
     });
     window.on('resize', updateWinStatus)
     // this._loadWindowTemplate(win, name);
