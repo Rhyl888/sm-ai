@@ -6,6 +6,7 @@ import { debounce } from '@common/utils';
 
 import logManager from './LogService';
 import path from 'node:path';
+import themeManager from './ThemeService';
 
 interface SizeOptions {
   width: number; // 窗口宽度
@@ -19,8 +20,8 @@ interface SizeOptions {
 const SHARED_WINDOW_OPTIONS = {
   titleBarStyle: 'hidden',
   title: 'Diona',
-  darkTheme: nativeTheme.shouldUseDarkColors,
-  backgroundColor: nativeTheme.shouldUseDarkColors ? '#2C2C2C' : '#FFFFFF',
+  darkTheme: themeManager.isDark,
+  backgroundColor: themeManager.isDark ? '#2C2C2C' : '#FFFFFF',
   webPreferences: {
     nodeIntegration: false, // 禁用 Node.js 集成，提高安全性
     contextIsolation: true, // 启用上下文隔离，防止渲染进程访问主进程 API
