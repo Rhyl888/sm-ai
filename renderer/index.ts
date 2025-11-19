@@ -1,12 +1,36 @@
 import './styles/index.css';
 import 'vfonts/Lato.css';
 
-import { createApp } from 'vue';
-import i18n from './i18n';
+import { createApp, type Plugin } from 'vue';
 import App from '../renderer/App.vue';
 import errorHandler from './utils/errorHandler';
 
+import TitleBar from './components/TitleBar.vue';
+import DragRegion from './components/DragRegion.vue';
+import { createMemoryHistory, createRouter } from 'vue-router';
+import i18n from './i18n';
+
+const components: Plugin = function (app) {
+  app.component('TitleBar', TitleBar);
+  app.component('DragRegion', DragRegion);
+};
+
+const router = createRouter({
+  history: createMemoryHistory(),
+  routes: [
+    {
+      path: '/',
+      component: () => import('./views/index.vue')
+    }
+  ]
+});
+
+const pinia = createPinia();
+
 createApp(App)
-  .use(await i18n)
+  .use(pinia)
+  .use(router)
+  .use(components)
+  .use(i18n)
   .use(errorHandler)
   .mount('#app');
