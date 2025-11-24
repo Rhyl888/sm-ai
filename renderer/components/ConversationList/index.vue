@@ -3,8 +3,35 @@ import { useFilter } from './useFilter';
 import SearchBar from './SearchBar.vue';
 import ListItem from './ListItem.vue';
 import { CTX_KEY } from './constants';
+4;
+import { useContextMenu } from './useContextMenu';
+import { Conversation } from '@common/types';
+import { createContextMenu } from '@renderer/utils/contextMenu';
+import { CONVERSATION_ITEM_MENU_IDS, MENU_IDS } from '@common/constants';
+
+const conversationItemActionPolicy = new Map([
+  [
+    CONVERSATION_ITEM_MENU_IDS.DEL,
+    () => {
+      console.log('删除');
+    }
+  ],
+  [
+    CONVERSATION_ITEM_MENU_IDS.RENAME,
+    () => {
+      console.log('重命名');
+    }
+  ],
+  [
+    CONVERSATION_ITEM_MENU_IDS.PIN,
+    () => {
+      console.log('置顶');
+    }
+  ]
+]);
 
 defineOptions({ name: 'ConversationList' });
+4;
 
 const props = defineProps<{ width: number }>();
 
@@ -13,12 +40,24 @@ provide(CTX_KEY, {
 });
 
 const { conversations } = useFilter();
+
+const { handle: handleListContextMenu } = useContextMenu();
+
+async function handleItemContextMenu(_item: Conversation) {
+  const clickItem = (await createContextMenu(
+    MENU_IDS.CONVERSATION_ITEM,
+    void 0
+  )) as CONVERSATION_ITEM_MENU_IDS;
+  const action = conversationItemActionPolicy.get(clickItem);
+  action && (await action?.());
+}
 </script>
 
 <template>
   <div
     class="conversation-list px-2 pt-3 h-[100vh] flex flex-col"
     :style="{ width: 'calc(100% - 57px)' }"
+    @contextmenu.prevent.stop="handleListContextMenu"
   >
     <search-bar class="mt-3" />
     <ul class="flex-auto overflow-auto">
@@ -26,6 +65,7 @@ const { conversations } = useFilter();
         <li
           v-if="item.type !== 'divider'"
           class="cursor-pointer p-2 mt-2 rounded-md hover:bg-input flex flex-col items-start gap-2"
+          @contextmenu.prevent.stop="handleItemContextMenu(item)"
         >
           <list-item v-bind="item" />
         </li>

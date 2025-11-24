@@ -2,14 +2,15 @@ import { IPC_EVENTS } from "@common/constants";
 import { cloneDeep } from "@common/utils";
 import { ipcMain, Menu, type MenuItemConstructorOptions } from "electron";
 import logManager from "./LogService";
+import { createTranslator } from '../utils'
 
 // Menu.buildFromTemplate()
 
-let t = (val: string | undefined) => val;
+let t: ReturnType<typeof createTranslator> = createTranslator();
 
 class MenuService {
   private static _instance: MenuService;
-  private _menuTemplate: Map<string, MenuItemConstructorOptions[]> = new Map();
+  private _menuTemplates: Map<string, MenuItemConstructorOptions[]> = new Map();
   private _currentMenu?: Menu = void 0;
 
   private constructor() {
@@ -42,7 +43,7 @@ class MenuService {
   }
 
   public register(menuId: string, template: MenuItemConstructorOptions[]) {
-    this._menuTemplate.set(menuId, template);
+    this._menuTemplates.set(menuId, template);
     return menuId;
   }
 
@@ -53,7 +54,7 @@ class MenuService {
   ) {
     if (this._currentMenu) return;
 
-    const template = cloneDeep(this._menuTemplate.get(menuId));
+    const template = cloneDeep(this._menuTemplates.get(menuId));
 
     if (!template) {
       logManager.warn(`Menu ${menuId} not found.`);
@@ -133,11 +134,11 @@ class MenuService {
   }
 
   public destroyMenu(menuId: string) {
-    this._menuTemplate.delete(menuId);
+    this._menuTemplates.delete(menuId);
   }
 
   public destroyed() {
-    this._menuTemplate.clear();
+    this._menuTemplates.clear();
     this._currentMenu = void 0;
   }
 }

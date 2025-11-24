@@ -1,12 +1,26 @@
 import type { WindowNames } from '@common/types';
 
 import { IPC_EVENTS } from '@common/constants';
-import { BrowserWindow, BrowserWindowConstructorOptions, ipcMain, IpcMainInvokeEvent, nativeTheme, type IpcMainEvent } from 'electron';
+import {
+  BrowserWindow,
+  BrowserWindowConstructorOptions,
+  ipcMain,
+  IpcMainInvokeEvent,
+  nativeTheme,
+  type IpcMainEvent
+} from 'electron';
 import { debounce } from '@common/utils';
 
 import logManager from './LogService';
 import path from 'node:path';
 import themeManager from './ThemeService';
+
+interface WindowState {
+  instance: BrowserWindow | void;
+  isHidden: boolean;
+  onCreate: ((window: BrowserWindow) => void)[];
+  onClosed: ((window: BrowserWindow) => void)[];
+}
 
 interface SizeOptions {
   width: number; // 窗口宽度
@@ -27,12 +41,15 @@ const SHARED_WINDOW_OPTIONS = {
     contextIsolation: true, // 启用上下文隔离，防止渲染进程访问主进程 API
     sandbox: true, // 启用沙箱模式，进一步增强安全性
     backgroundThrottling: false,
-    preload: path.join(__dirname, 'preload.js'),
-  },
+    preload: path.join(__dirname, 'preload.js')
+  }
 } as BrowserWindowConstructorOptions;
 
 class WindowService {
   private static _instance: WindowService;
+  private _winStates: Record<WindowNames | string, WindowState> = {
+    main: { instance: void 0, isHidden: false, onCreate: [], onClosed: [] }
+  };
 
   private constructor() {
     this._setupIpcEvents();
@@ -42,16 +59,16 @@ class WindowService {
   private _setupIpcEvents() {
     const handleCloseWindow = (e: IpcMainEvent) => {
       this.close(BrowserWindow.fromWebContents(e.sender));
-    }
+    };
     const handleMinimizeWindow = (e: IpcMainEvent) => {
       BrowserWindow.fromWebContents(e.sender)?.minimize();
-    }
+    };
     const handleMaximizeWindow = (e: IpcMainEvent) => {
       this.toggleMax(BrowserWindow.fromWebContents(e.sender));
-    }
+    };
     const handleIsWindowMaximized = (e: IpcMainInvokeEvent) => {
       return BrowserWindow.fromWebContents(e.sender)?.isMaximized() ?? false;
-    }
+    };
 
     ipcMain.on(IPC_EVENTS.CLOSE_WINDOW, handleCloseWindow);
     ipcMain.on(IPC_EVENTS.MINIMIZE_WINDOW, handleMinimizeWindow);
@@ -69,27 +86,35 @@ class WindowService {
   public create(name: WindowNames, size: SizeOptions) {
     const window = new BrowserWindow({
       ...SHARED_WINDOW_OPTIONS,
-      ...size,
-    })
+      ...size
+    });
 
     // this._loadWindowTemplate(window, name);
-    this
-      ._setupWinLifecycle(window, name)
-      ._loadWindowTemplate(window, name)
+    this._setupWinLifecycle(window, name)._loadWindowTemplate(window, name);
+
+    this._winStates[name].onCreate.forEach((cb) => cb(window));
 
     return window;
   }
   private _setupWinLifecycle(window: BrowserWindow, name: WindowNames) {
-    const updateWinStatus = debounce(() => !window?.isDestroyed()
-      && window?.webContents?.send(IPC_EVENTS.MAXIMIZE_WINDOW + 'back', window?.isMaximized()), 80);
+    const updateWinStatus = debounce(
+      () =>
+        !window?.isDestroyed() &&
+        window?.webContents?.send(
+          IPC_EVENTS.MAXIMIZE_WINDOW + 'back',
+          window?.isMaximized()
+        ),
+      80
+    );
     // win.on('')
     window.once('closed', () => {
+      this._winStates[name].onClosed.forEach((cb) => cb(window));
       window?.destroy();
       window?.removeListener('resize', updateWinStatus);
       // this._winStates[name].instance = void 0;
       logManager.info(`Window closed: ${name}`);
     });
-    window.on('resize', updateWinStatus)
+    window.on('resize', updateWinStatus);
     // this._loadWindowTemplate(win, name);
     return this;
   }
@@ -97,9 +122,20 @@ class WindowService {
   private _loadWindowTemplate(window: BrowserWindow, name: WindowNames) {
     // 检查是否存在开发服务器 URL，若存在则表示处于开发环境
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-      return window.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}${'/html/' + (name === 'main' ? '' : name)}`);
+      return window.loadURL(
+        `${MAIN_WINDOW_VITE_DEV_SERVER_URL}${
+          '/html/' + (name === 'main' ? '' : name)
+        }`
+      );
     }
-    window.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/html/${name === 'main' ? 'index' : name}.html`));
+    window.loadFile(
+      path.join(
+        __dirname,
+        `../renderer/${MAIN_WINDOW_VITE_NAME}/html/${
+          name === 'main' ? 'index' : name
+        }.html`
+      )
+    );
   }
 
   public close(target: BrowserWindow | void | null) {
@@ -112,6 +148,19 @@ class WindowService {
     target.isMaximized() ? target.unmaximize() : target.maximize();
   }
 
+  public onWindowCreate(
+    name: WindowNames,
+    callback: (window: BrowserWindow) => void
+  ) {
+    this._winStates[name].onCreate.push(callback);
+  }
+
+  public onWindowClosed(
+    name: WindowNames,
+    callback: (window: BrowserWindow) => void
+  ) {
+    this._winStates[name].onClosed.push(callback);
+  }
 }
 
 export const windowManager = WindowService.getInstance();

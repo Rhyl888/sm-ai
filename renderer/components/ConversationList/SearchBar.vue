@@ -2,14 +2,17 @@
 import { NInput, NInputGroup, NInputGroupLabel, NIcon } from 'naive-ui';
 import { Icon as IconifyIcon } from '@iconify/vue';
 import { useFilter } from './useFilter';
+import { useContextMenu } from './useContextMenu';
+
 defineOptions({ name: 'SearchBar' });
 
 const { searchKey } = useFilter();
 const { t } = useI18n();
+const { handle: handleListContextMenu } = useContextMenu();
 </script>
 
 <template>
-  <div class="my-2" @contextmenu.stop @click.stop>
+  <div class="my-2" @contextmenu.stop.prevent="handleListContextMenu" @click.stop>
     <n-input-group>
       <n-input v-model:value="searchKey" size="small" :placeholder="t('main.conversation.searchPlaceholder')" clearable>
         <template #prefix>
