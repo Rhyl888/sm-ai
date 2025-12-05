@@ -54,7 +54,7 @@ export const providers: Provider[] = [
   }
 ];
 
-export const dataBase = new Dexie('smDB') as Dexie & {
+export const dataBase = new Dexie('dionaDB') as Dexie & {
   providers: EntityTable<Provider, 'id'>;
   conversations: EntityTable<Conversation, 'id'>;
   messages: EntityTable<Message, 'id'>;
@@ -66,7 +66,7 @@ dataBase.version(1).stores({
   messages: '++id,conversationId'
 });
 
-export async function initProvider() {
+export async function initProviders() {
   const count = await dataBase.providers.count();
   if (count === 0) {
     await dataBase.providers.bulkAdd(providers);

@@ -1,11 +1,9 @@
-import { conversations } from './../testData';
 import type { Conversation } from '@common/types';
-import { conversations as testConversations } from '../testData';
 import { debounce } from '@common/utils';
 import { dataBase } from '@renderer/dataBase';
 
 type SortBy = 'updatedAt' | 'createAt' | 'name' | 'model'; // 排序字段类型
-type SortOrder = 'asc' | 'desc';
+type SortOrder = 'asc' | 'desc'; // 排序顺序类型
 
 const SORT_BY_KEY = 'conversation:sortBy';
 const SORT_ORDER_KEY = 'conversation:sortOrder';
@@ -19,7 +17,7 @@ const saveSortMode = debounce(
 );
 
 export const useConversationsStore = defineStore('conversations', () => {
-  const conversations = ref<Conversation[]>(testConversations);
+  const conversations = ref<Conversation[]>([]);
 
   const saveSortBy = localStorage.getItem(SORT_BY_KEY) as SortBy;
   const saveSortOrder = localStorage.getItem(SORT_ORDER_KEY) as SortOrder;
@@ -27,6 +25,7 @@ export const useConversationsStore = defineStore('conversations', () => {
   const sortBy = ref<SortBy>(saveSortBy || 'updatedAt');
   const sortOrder = ref<SortOrder>(saveSortOrder || 'desc');
 
+  // Getters
   const allConversations = computed(() => conversations.value);
   const sortMode = computed(() => ({
     sortBy: sortBy.value,
@@ -36,6 +35,7 @@ export const useConversationsStore = defineStore('conversations', () => {
   async function initialize() {
     conversations.value = await dataBase.conversations.toArray();
 
+    // 清除无用的 message
     const ids = conversations.value.map((item) => item.id);
     const msgs = await dataBase.messages.toArray();
     const invalidId = msgs
