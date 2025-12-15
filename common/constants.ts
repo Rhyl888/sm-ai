@@ -7,6 +7,7 @@ export enum IPC_EVENTS {
   GET_THEME_MODE = "get-theme-mode",
   IS_DARK_THEME = "is-dark-theme",
   SHOW_CONTEXT_MENU = "show-context-menu",
+  RENDERER_IS_READY = 'renderer-ready',
 
   LOG_DEBUG = "log-debug",
   LOG_INFO = "log-info",
