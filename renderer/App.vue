@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import ConversationList from '@renderer/components/ConversationList/index.vue';
-import NavBar from '@renderer/components/NavBar.vue';
-import ResizeDivider from '@renderer/components/ResizeDivider.vue';
 import { NConfigProvider } from 'naive-ui';
 import { initProviders } from './dataBase';
-import { useConversationsStore } from './stores/conversations';
 import { useProvidersStore } from './stores/providers';
-import logger from './utils/logger';
+import { useConversationsStore } from './stores/conversations';
+import { logger } from './utils/logger';
+import NavBar from '@renderer/components/NavBar.vue';
+import ResizeDivider from '@renderer/components/ResizeDivider.vue';
+import ConversationList from '@renderer/components/ConversationList/index.vue';
 
 const sidebarWidth = ref(320);
 const { initialize: initializeProvidersStore } = useProvidersStore();
@@ -18,7 +18,6 @@ onMounted(async () => {
   await initializeConversationsStore();
   logger.info('App mounted');
 });
-
 </script>
 <template>
   <n-config-provider class="h-full w-[100vw] flex text-tx-primary">
