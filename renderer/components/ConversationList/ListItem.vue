@@ -32,7 +32,9 @@ function updateTitle(val: string) {
 
 watch(checked, (val) => {
   if (val) {
-    !ctx?.checkedIds.value.includes(props.id) && ctx?.checkedIds.value.push(props.id);
+    if (ctx && !ctx.checkedIds.value.includes(props.id)) {
+      ctx.checkedIds.value.push(props.id);
+    }
     return
   }
   const idx = ctx?.checkedIds.value.indexOf(props.id);
