@@ -87,3 +87,16 @@ export function parseOpenAISetting(setting: string): OpenAISetting {
     return {} as OpenAISetting;
   }
 }
+
+
+export function uniqueByKey<T>(arr: T[], key: keyof T): T[] {
+ const seen = new Map<any, boolean>()
+ return arr.filter(item => {
+   const k = item[key]
+    if (seen.has(k)) {
+      return false
+    } else {
+      seen.set(k, true) 
+      return true
+    }})
+}
