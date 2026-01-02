@@ -2,7 +2,8 @@ import { CONVERSATION_ITEM_MENU_IDS, CONVERSATION_LIST_MENU_IDS, IPC_EVENTS, MAI
 import logManager from '@main/service/LogService';
 import menuManager from '@main/service/MenuService';
 import windowManager from '@main/service/WindowService';
-import { BrowserWindow } from 'electron';
+import { BrowserWindow,ipcMain } from 'electron';
+import { createProvider } from '../providers';
 
 const registerMenus = (window: BrowserWindow) => {
   const conversationItemMenuItemClick = (id: string) => {
@@ -67,5 +68,42 @@ export function setupMainWindow() {
   })
 
   windowManager.create(WINDOW_NAMES.MAIN, MAIN_WIN_SIZE);
+  ipcMain.on(IPC_EVENTS.START_A_DIALOGUE, async (_envent, props: CreateDialogueProps) => {
+    const { providerName, messages, messageId, selectedModel} = props;
+    const mainWindow = windowManager.get(WINDOW_NAMES.MAIN);
+
+    if (!mainWindow) {
+      throw new Error('Main window not found');
+    }
+
+    try {
+      const provider = createProvider(providerName);
+      const chunks = await provider?.chat(messages, selectedModel);
+
+      if (!chunks) {
+          throw new Error('chunks or stream not found');
+      }
+
+      for await (const chunk of chunks) {
+        const chunkContent = {
+          messageId,
+          data: chunk
+        }
+        mainWindow.webContents.send(IPC_EVENTS.START_A_DIALOGUE + 'back' + messageId, chunkContent)
+      }
+    } catch (error) {
+      
+    const errorContent = {
+        messageId,
+        data: {
+          isEnd: true,
+          isError: true,
+          result: error instanceof Error ? error.message : String(error),
+        }
+      }
+
+      mainWindow.webContents.send(IPC_EVENTS.START_A_DIALOGUE + 'back' + messageId, errorContent);
+    }
+  })
 }
-7
+
