@@ -1,10 +1,9 @@
-import { messages } from './../testData';
-// import { conversations } from './../testData';
 import type { Message, MessageStatus } from '@common/types';
 import { cloneDeep, uniqueByKey } from '@common/utils';
 import { defineStore } from 'pinia';
 
 import { dataBase } from '../dataBase';
+import i18n from '../i18n';
 
 import { useConversationsStore } from './conversations';
 import { useProvidersStore } from './providers';
@@ -20,13 +19,29 @@ export const useMessagesStore = defineStore('messages', () => {
   // state
   const messages = ref<Message[]>([]);
 
+  const messagesInputValue = ref(new Map());
+
   //Getters
   const allMessages = computed(() => messages.value);
+  const messageInputValueById = computed(
+    () => (conversationId: number) =>
+      messagesInputValue.value.get(conversationId) ?? ''
+  );
   const messagesByConversationId = computed(
     () => (conversationId: number) =>
       messages.value
         .filter((message) => message.conversationId === conversationId)
         .sort((a, b) => a.createdAt - b.createdAt)
+  );
+  const loadingMsgIdsByConversationId = computed(
+    () => (conversationId: number) =>
+      messagesByConversationId
+        .value(conversationId)
+        .filter(
+          (message) =>
+            message.status === 'loading' || message.status === 'streaming'
+        )
+        .map((message) => message.id)
   );
 
   const messageByConversationId = computed(() => (conversationId: number) => {
@@ -47,6 +62,10 @@ export const useMessagesStore = defineStore('messages', () => {
 
     const saved = await dataBase.messages.where({ conversationId }).toArray();
     messages.value = uniqueByKey([...messages.value, ...saved], 'id');
+  }
+
+  function setMessageInputValue(conversationId: number, value: string) {
+    messagesInputValue.value.set(conversationId, value);
   }
 
   const _updateConversation = async (conversationId: number) => {
@@ -91,20 +110,22 @@ export const useMessagesStore = defineStore('messages', () => {
 
     msgContentMap.set(loadingMsgId, '');
 
-    let streamCallback: ((stream: DialogueBackStream) => Promise<void>) | void = async (stream) => {
+    let streamCallback:
+      | ((stream: DialogueBackStream) => Promise<void>)
+      | void = async (stream) => {
       const { data, messageId } = stream;
       const getStatus = (data: DialogueBackStream['data']): MessageStatus => {
         if (data.isError) return 'error';
         if (data.isEnd) return 'success';
         return 'streaming';
-      }
+      };
       msgContentMap.set(messageId, msgContentMap.get(messageId) + data.result);
 
       const _update = {
         content: msgContentMap.get(messageId) || '',
         status: getStatus(data),
-        updatedAt: Date.now(),
-      } as Message
+        updatedAt: Date.now()
+      } as Message;
 
       await nextTick();
       updateMessage(messageId, _update);
@@ -112,24 +133,49 @@ export const useMessagesStore = defineStore('messages', () => {
         msgContentMap.delete(messageId);
         streamCallback = void 0;
       }
-    }
-    stopMethods.set(loadingMsgId, listenDialogueBack(streamCallback, loadingMsgId));
-    const messages = messagesByConversationId.value(message.conversationId).filter(item => item.status !== 'loading').map(item => ({
-      role: item.type === 'question' ? 'user' : 'assistant' as DialogueMessageRole,
-      content: item.content,
-    }));
+    };
+    stopMethods.set(
+      loadingMsgId,
+      listenDialogueBack(streamCallback, loadingMsgId)
+    );
+    const messages = messagesByConversationId
+      .value(message.conversationId)
+      .filter((item) => item.status !== 'loading')
+      .map((item) => ({
+        role:
+          item.type === 'question'
+            ? 'user'
+            : ('assistant' as DialogueMessageRole),
+        content: item.content
+      }));
 
     await window.api.startADialogue({
       messageId: loadingMsgId,
       providerName: provider.name,
       selectedModel: conversation.selectedModel,
       conversationId: message.conversationId,
-      messages,
+      messages
     });
 
     return loadingMsgId;
   }
 
+  async function stopMessage(id: number, update: boolean = true) {
+    const stop = stopMethods.get(id);
+    stop && stop?.();
+
+    if (update) {
+      const msgContent =
+        messages.value.find((msg) => msg.id === id)?.content || '';
+      await updateMessage(id, {
+        status: 'success',
+        updatedAt: Date.now(),
+        content: msgContent
+          ? msgContent + i18n.global.t('main.message.stoppedGeneration')
+          : void 0
+      });
+    }
+  }
 
   async function updateMessage(id: number, updates: Partial<Message>) {
     let currentMsg = cloneDeep(
@@ -143,7 +189,7 @@ export const useMessagesStore = defineStore('messages', () => {
 
   async function deleteMessage(id: number) {
     let currentMsg = cloneDeep(messages.value.find((item) => item.id === id));
-    //TODO: stopMessage(id, false);
+    stopMessage(id, false);
     await dataBase.messages.delete(id);
     currentMsg && _updateConversation(currentMsg.conversationId);
     // 从响应式数组中移除
@@ -155,10 +201,14 @@ export const useMessagesStore = defineStore('messages', () => {
     messages,
     allMessages,
     messagesByConversationId,
+    messageInputValueById,
+    loadingMsgIdsByConversationId,
     initialize,
     addMessage,
     sendMessage,
     updateMessage,
-    deleteMessage
+    deleteMessage,
+    stopMessage,
+    setMessageInputValue
   };
 });
