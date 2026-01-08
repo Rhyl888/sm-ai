@@ -1,19 +1,25 @@
 import 'vfonts/Lato.css';
 import './styles/index.css';
 
+import { createPinia } from 'pinia';
 import { createApp, type Plugin } from 'vue';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import App from '../renderer/App.vue';
+import i18n from './i18n';
 import errorHandler from './utils/errorHandler';
 
-import { createMemoryHistory, createRouter } from 'vue-router';
 import DragRegion from './components/DragRegion.vue';
 import TitleBar from './components/TitleBar.vue';
-import i18n from './i18n';
+
+import hljs from 'highlight.js/lib/core';
+import xml from 'highlight.js/lib/languages/xml';
+
+hljs.registerLanguage('vue', xml);
 
 const components: Plugin = function (app) {
   app.component('TitleBar', TitleBar);
   app.component('DragRegion', DragRegion);
-};
+}
 
 const router = createRouter({
   history: createMemoryHistory(),
@@ -32,9 +38,9 @@ const router = createRouter({
           component: () => import('./views/conversation.vue')
         }
       ]
-    }
-  ]
-});
+    },
+  ],
+})
 
 const pinia = createPinia();
 
