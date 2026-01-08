@@ -1,8 +1,8 @@
-import { defineConfig, type CSSOptions } from 'vite';
 import { resolve } from 'node:path';
+import { defineConfig, type CSSOptions, type UserConfig } from 'vite';
 
 // https://vitejs.dev/config
-export default defineConfig(async () => {
+export default defineConfig(async (): Promise<UserConfig> => {
   const vue = (await import('@vitejs/plugin-vue')).default;
   const tailwindcss = (await import('@tailwindcss/vite')).default;
   const autoImport = (await import('unplugin-auto-import/vite')).default;
@@ -16,12 +16,15 @@ export default defineConfig(async () => {
         dts: 'renderer/auto-imports.d.ts'
       })
     ],
+    publicDir: 'public',
+    worker: {
+      format: 'es',
+    },
     css: {
       transformer: 'lightningcss' as CSSOptions['transformer']
     },
     build: {
       target: 'es2020',
-      publickDir: 'public',
       rollupOptions: {
         input: [
           resolve(__dirname, 'html/index.html'),

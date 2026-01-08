@@ -101,6 +101,10 @@ window.onresize = throttle(async () => {
 onMounted(async () => {
   await nextTick();
   listHeight.value = window.innerHeight * listScale.value;
+  // 初始化当前会话的消息
+  if (conversationId.value) {
+    await messagesStore.initialize(conversationId.value);
+  }
 });
 
 onBeforeRouteUpdate(async (to, from, next) => {

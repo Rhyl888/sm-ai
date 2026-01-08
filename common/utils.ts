@@ -2,24 +2,35 @@ import type { OpenAISetting } from './types';
 import { encode, decode } from 'js-base64';
 
 /**
- * 防抖函数
+ * 防抖函数（支持取消）
  * @param fn 需要执行的函数
  * @param delay 延迟时间（毫秒）
- * @returns 防抖处理后的函数
+ * @returns 防抖处理后的函数，包含 cancel 方法
  */
 export function debounce<T extends (...args: any[]) => any>(
   fn: T,
   delay: number
-): (...args: Parameters<T>) => void {
+): ((...args: Parameters<T>) => void) & { cancel: () => void } {
   let timer: NodeJS.Timeout | null = null;
-  return function (this: any, ...args: Parameters<T>) {
+  
+  const debounced = function (this: any, ...args: Parameters<T>) {
     if (timer) {
       clearTimeout(timer);
     }
     timer = setTimeout(() => {
       fn.apply(this, args);
+      timer = null;
     }, delay);
+  } as ((...args: Parameters<T>) => void) & { cancel: () => void };
+  
+  debounced.cancel = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
   };
+  
+  return debounced;
 }
 
 /**

@@ -7,6 +7,7 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import App from '../renderer/App.vue';
 import i18n from './i18n';
 import errorHandler from './utils/errorHandler';
+import { destroyMarkdownWorker } from './utils/markdownWorker';
 
 import DragRegion from './components/DragRegion.vue';
 import TitleBar from './components/TitleBar.vue';
@@ -51,3 +52,8 @@ createApp(App)
   .use(i18n)
   .use(errorHandler)
   .mount('#app');
+
+// 应用卸载时清理 Worker
+window.addEventListener('beforeunload', () => {
+  destroyMarkdownWorker();
+});

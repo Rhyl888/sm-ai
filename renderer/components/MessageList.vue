@@ -24,41 +24,49 @@ function _getScrollDOM() {
   return msgListDOM.getElementsByClassName(SCROLLBAR_CONTENT_CLASS_NAME)[0];
 }
 
-async function scrollToBottom(behavior: ScrollIntoViewOptions['behavior'] = 'smooth') {
-  await nextTick()
+// 检查是否处于底部（允许 10px 误差）
+function isAtBottom() {
+  const container = _getScrollDOM();
+  if (!container) return false;
+
+  const threshold = 10;
+  return container.scrollHeight - container.scrollTop <= container.clientHeight + threshold;
+}
+
+// 统一的滚动函数
+function scrollToBottom(behavior: ScrollIntoViewOptions['behavior'] = 'smooth') {
   const scrollDOM = _getScrollDOM();
   if (!scrollDOM) return;
   scrollDOM.scrollIntoView({
     behavior,
     block: 'end',
-  })
+  });
 }
 
-let currentHeight = 0;
-watch([() => route.params.id, () => props.messages.length], () => {
-  scrollToBottom('instant');
-  currentHeight = 0;
+onMounted(() => {
+  const scrollDOM = _getScrollDOM();
+  if (!scrollDOM) return;
+
+  const ob = new ResizeObserver(() => {
+    if (isAtBottom() || props.messages.some(m => m.status === 'streaming')) {
+      requestAnimationFrame(() => {
+        scrollToBottom('smooth');
+      });
+    }
+  });
+
+  ob.observe(scrollDOM);
+
+  // 初始进入直接到底
+  requestAnimationFrame(() => scrollToBottom('instant'));
+
+  onUnmounted(() => ob.disconnect());
 });
 
-watch(
-  () => props.messages[props.messages.length - 1]?.content?.length,
-  () => {
-    const scrollDOM = _getScrollDOM();
-    if (!scrollDOM) return;
-    const height = scrollDOM.scrollHeight;
-    if (height > currentHeight) {
-      currentHeight = height;
-      scrollToBottom();
-    }
-  },
-  { immediate: true, deep: true }
-);
-
-
-onMounted(() => {
-  scrollToBottom('instant');
-})
-
+// 监听路由/对话切换：直接重置滚动位置
+watch(() => route.params.id, () => {
+  nextTick(() => scrollToBottom('instant'));
+});
 </script>
 
 <template>
@@ -73,7 +81,6 @@ onMounted(() => {
           <span>
             <div class="text-sm text-gray-500 mb-2"
               :style="{ textAlign: message.type === 'question' ? 'end' : 'start' }">
-              <!-- TODO: timeAgo -->
               {{ formatTimeAgo(message.createdAt) }}
             </div>
             <div class="msg-shadow p-2 rounded-md bg-bubble-self text-white" v-if="message.type === 'question'">
